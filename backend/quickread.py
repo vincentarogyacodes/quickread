@@ -26,12 +26,9 @@ def extract_article(url):
     except requests.exceptions.ConnectionError:
         print("Website could not be reached. Please check your internet connection or the website's availability.")
         return None
-    response = requests.get(url)
-
-    if response.status_code !=200:
-        print("Could not retrieve the webpage.")
+    except requests.exceptions.HTTPError:
+        print("The article could not be retrieved. The page may not exist or the site may be experiencing issues.")
         return None
-
 
     article_text = trafilatura.extract(
         response.text,
@@ -101,10 +98,3 @@ Article:
     )
 
     return response.choices[0].message.content
-url = input("Enter the URL of the article: ")
-
-article = extract_article(url) # Stores the extracted article text in the variable article by calling the extract_article function with the provided URL
-
-if article:
-    summary = summarize_article(article)
-    print(summary)
