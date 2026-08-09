@@ -4,25 +4,31 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
-load_dotenv()
+load_dotenv() #loads environment variables from a .env file
 
 api_key = os.getenv("OPENROUTER_API_KEY")
+
+if not api_key:
+    raise ValueError("OPENROUTER_API_KEY is missing.")
 
 client = OpenAI(
     api_key=api_key,
     base_url="https://openrouter.ai/api/v1"
 )
 
-if not api_key:
-    raise ValueError("OPENROUTER_API_KEY is missing.")
-
 def extract_article(url):
-    response = requests.get(url)
-
-    if response.status_code !=200:
-        print("Could not retrieve the webpage.")
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+    except requests.exceptions.MissingSchema:
+        print("Invalid URL. Please enter a complete URL, such as https://example.com/article")
         return None
-
+    except requests.exceptions.ConnectionError:
+        print("Website could not be reached. Please check your internet connection or the website's availability.")
+        return None
+    except requests.exceptions.HTTPError:
+        print("The article could not be retrieved. The page may not exist or the site may be experiencing issues.")
+        return None
 
     article_text = trafilatura.extract(
         response.text,
@@ -36,7 +42,7 @@ def extract_article(url):
 
     return article_text
 
-def summarize_article(article_text):
+def summarize_article(article_text): #Define a function that accepts the extracted article text and sends it to the OpenAI API for summarization
     prompt = f"""
 You are QuickRead, a document analysis assistant.
 
@@ -92,11 +98,3 @@ Article:
     )
 
     return response.choices[0].message.content
-
-url = input("Enter the URL of the article: ")
-
-article = extract_article(url)
-
-if article:
-    summary = summarize_article(article)
-    print(summary)
