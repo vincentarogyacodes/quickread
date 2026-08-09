@@ -18,4 +18,5 @@ def summarize(request: SummarizeRequest):
     if extracted_article is None:
         return {"message": "Could not extract article text from the provided URL."}
     else:
-        return {"message": extracted_article}
+        summarized_article = summarize_article(extracted_article)
+        return {"message": summarized_article}
