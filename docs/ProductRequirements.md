@@ -1,6 +1,6 @@
 # Product Name
 
-QuickRead (working title).
+QuickRead
 
 # Vision
 

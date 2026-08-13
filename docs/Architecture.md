@@ -10,7 +10,7 @@ QuickRead uses a full-stack architecture. The backend server accepts web URLs fr
 
 `summarize_article()` sends the extracted text, along with an LLM prompt, to the `openai/gpt-oss-20b:free` LLM model via the OpenRouter API. The LLM returns a summarized version of the article, which gets packaged as a JSON response and sent back to the frontend.
 
-![Architecture Diagram](/quickread/diagrams/high-level-architecture-design.png)
+![Architecture Diagram](../diagrams/high-level-architecture-design.png)
 
 # Components
 
