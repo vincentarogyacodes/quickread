@@ -1,167 +1,59 @@
-**Status: Draft/Experimental**
+# Overview / Purpose
 
-# Overview
+QuickRead is an article summarizer tool that converts long web articles into digestable bullets, ready to be consumed in under a minute.
 
-The QuickRead system accepts user input in form of web URL or plain text, processes it in the backend, and presents a structured output on the frontend. The product's role is classify the article type, incorporate a relevant prompt template, and output the data without introducing unsupported facts. The output will be scannable and humans can read it in under a minute. 
+QuickRead's goal is to save user time by providing essential text summary without sacrificing facts and figures.
 
-# High-Level Architecture
+# System Architecture
 
-QuickRead follows a client-server architecture. The frontend is responsible for accepting web URL, while the backend handles text extraction, document classification, and communication with the AI model. This separation keeps the frontend relatively lightweight.
+QuickRead uses a full-stack architecture. The backend server accepts web URLs from the frontend as POST requests, then uses the `trafilatura` Python package's `extract()` function to pull plain text from the HTML body. The extracted text is then processed through `summarize_article()`.
 
-Data transfer and text processing in QuickReads uses the following flow:
+`summarize_article()` sends the extracted text, along with an LLM prompt, to the `openai/gpt-oss-20b:free` LLM model via the OpenRouter API. The LLM returns a summarized version of the article, which gets packaged as a JSON response and sent back to the frontend.
 
-``` architecture flow
-
-Browser
-
-↓
-
-Frontend (React)
-
-↓
-
-Backend API (FastAPI)
-
-↓
-
-Article Extraction
-
-↓
-
-AI Processing
-
-↓
-
-Response
-
-```
-
-- **Browser:** The web browser is where the user requests QuickRead to summarize an article.
-
-- **Frontend (React):** The frontend accepts the web URL and uses a POST method to send it to the backend.
-
-- **Backend API (FastAPI):** The backend fetches the webpage.
-
-- **Article Extraction:** The backend analysis the web page and extracts the main article in plain text.
-
-- **AI Processing:** The extracted text is processed through an AI model to generate relevant summary.
-
-- **Response:** The generated summary is sent back to the frontend and displayed to the user.
-
-# Request Lifecycle
-
-QuickRead processes user request using the following logic:
-
-``` request lifecycle
-
-User Pastes URL or plain text
-
-↓
-
-Backend validates URL or text
-
-↓
-
-Downloads webpage
-
-↓
-
-Extracts article
-
-↓
-
-Classifies article
-
-↓
-
-Generates summary
-
-↓
-
-Returns JSON
-
-↓
-
-Frontend displays summary
-
-```
+![Architecture Diagram](/quickread/diagrams/high-level-architecture-design.png)
 
 # Components
 
-QuickRead is built using the following modules that work together to successfully accepts web URL, process data, and output structured results:
-
-### HTML Parser
-
-Parses HTML to read text on web pages.
-
-### Article Extractor
-
-Identifies the main article piece on the web page and extracts it.
-
-### Article Categorizer
-
-Uses AI to determine article type and assigns it one of the predefined category.
-
-### Summary Generator
-
-Generates a summary after determining the article type and empoying a revelant LLM prompt.
-
-### Returns JSON
-
-Content summary is sent to the frontend in JSON.
-
-### Output Display
-
-Presents a scannable and human readable summary on the frontend.
+- **Frontend:** QuickRead's frontend is supported by the following artifacts:
+    - `index.html`: Defines the frontend's structure.
+    - `style.css`: Designs the elements visible on the frontend. Doesn't execute backend code.
+    - `script.js`: Defines how elements on the frontend behave. Connects frontend to the backend.
+- **Backend:** QuickRead's backend is responsible for processing user input and sending a response back to the frontend. The backend relies on the following features to process user request:
+    - `requests`: Python package that makes HTTP requests.
+    - `trafilatura`: Parses raw HTML into plain text.
+    - `openai`: Python package to access OpenAI's REST API to access llm model.
+    - `extract_article`: Function that extracts plain text from HTML body.
+    - `summarize_article`: Function that passes the plain text to an llm, along with a prompt to summarize the text.
+    - `fastAPI`: Python framework to build APIs.
+    - `pydantic`: Python package to validate data fields and structure.
+    - `GET /`: Endpoint reserved for sanity testing of the API. Doesn't influence functionality.
+    - `/summarize`: Endpoint that receives POST requests and calls the `exctract_article` and `summarize_article` functions.
 
 # Data Flow
 
-QuickRead accepts accepts user data, processes it, and outputs the result using the following logic:
+QuickRead accepts and processes data in the following order:
 
-``` data flow
+- User inputs a web URL on the frontend. A basic client-side input check runs before the request is sent.
+- The frontend makes a POST request to the `/summarize` endpoint. 
+- The backend validates the incoming request's structure using the `pydantic` package. Malformed requests are rejected here.
+- If the incoming request is valid, the API calls the `extract_article()`.
+- The `extract_article()` passes the URL string in the `requests.get()` to fetch the webpage for raw HTML. If the fetch fails here for any reason, the process stops here and the user receives an error message.
+- Upon a successful fetch, `response.text` is passed in the `trafilatura.extract()` to extract plain text body, which is then stored in the `article_text` variable.
+- The `article_text` along with a text prompt is sent to the `openai/gpt-oss-20b:free` model via OpenRouter API. API rate limiting can affect application performance.
+- The llm processes the `article_text` based on the prompt, and returns the summarized text.
+- The API server then structures the JSON response, including the summarized text, and sends it back to frontend.
+- The user finally receives a summarized web text.
 
-URL
+# Technology Stack & Justification
 
-↓
+The QuickRead application is built using the following technology stack:
 
-HTML
-
-↓
-
-Article Text
-
-↓
-
-Metadata
-
-↓
-
-Prompt
-
-↓
-
-JSON
-
-↓
-
-UI
-
-```
-
-# AI Pipeline
-
-
-
-# Project Structure
-
-
-
-# Technology Stack
-
-
-
-# API Overview
-
-
-
-# Future Architecture
+- `requests`: The python `requests` package enables the application to fetch the requested webpage using the user-input URL. The `requests` package was chosen for QuickRead since it's a widely-used, mature package for performing HTTP requests.
+- `trafilatura`: The `trafilatura` package extracts plain text from raw HTML body. Just like `requests` package, `trafilatura` readily solves the problem of text extraction from HTML, preventing the need to build a dedicated text extraction functionality.
+- `pydantic`: The `pydantic` package validates the data and structure of the incoming request body. With `pydantic`, the application ensures that the incoming url is a string.
+- `FastAPI`: This python framework helps setup an API server, connecting the backend with the frontend. FastAPI was chosen based on wide recommendations as the go-to API for beginners. It serves the purpose of connecting the frontend to the backend, which QuickRead requires to accept and process user data. Building an HTTP server while a mature framework like FastAPI already exists is unnecessary for QuickRead's scope.
+- `OpenAI`: A python library that allows setting up a client to interact with OpenRouter API and access a llm model for testing.
+- `OpenRouter`: Enables QuickRead to access an OpenAI llm model via OpenRouter API. OpenRouter establishes a connection between QuickRead and `openai/gpt-oss-20b:free` llm model.
+- `HTML`: Defines the structure and elements present on the frontend. 
+- `CSS`: Helps stylize the elements present on the frontend.
+- `JavaScript`: Adds behavior to frontend elements, such a button click behavior.
